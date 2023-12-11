@@ -1,6 +1,7 @@
 module ClippyOuty exposing (..)
 
 import Browser
+import File.Download
 import Html exposing (Html, div)
 import Html.Attributes as HA
 import Html.Events as HE
@@ -31,7 +32,7 @@ main = Browser.document
     }
 
 type alias Model =
-    { clips : List String
+    { source : String
     , line_width : Float
     , font_size : Float
     , font_family : String
@@ -39,7 +40,7 @@ type alias Model =
     }
 
 type Msg
-    = AddClip String
+    = DownloadImage String
     | Noop
     | SetLineWidth Float
     | SetFont String
@@ -48,7 +49,7 @@ type Msg
 
 init_model : Model
 init_model = 
-    { clips = []
+    { source = "Christmas Victorian Lady.jpg"
     , line_width = 60
     , font_size = 15
     , font_family = "serif"
@@ -66,9 +67,18 @@ clean_text =
         ((Regex.fromString "\\s+") |> Maybe.withDefault Regex.never)
         (\_ -> " ")
 
+change_suffix : String -> String -> String
+change_suffix suffix =
+       String.split "."
+    >> List.reverse
+    >> List.drop 1
+    >> (::) suffix
+    >> List.reverse
+    >> String.join "."
+
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model = case msg of
-    AddClip url -> { model | clips = url::model.clips } |> nocmd
+    DownloadImage content -> (model, File.Download.string (change_suffix "svg" model.source) "image/svg+xml" content)
     Noop -> model |> nocmd
     SetLineWidth w -> { model | line_width = w } |> nocmd
     SetFont font -> { model | font_family = font } |> nocmd
@@ -145,12 +155,12 @@ view model =
                 ]
                 []
             , Html.node "cut-out" 
-                [ HA.attribute "source" (List.head model.clips |> Maybe.withDefault "Christmas Victorian Lady.jpg")
+                [ HA.attribute "source" model.source
                 , HA.attribute "linewidth" <| String.fromFloat model.line_width
                 , HA.attribute "fontsize" <| String.fromFloat model.font_size
                 , HA.attribute "fontfamily" model.font_family
                 , HA.attribute "text" model.text
-                , HE.on "cut-out" (decode_cutout |> JD.map AddClip)
+                , HE.on "cut-out" (decode_cutout |> JD.map DownloadImage)
                 ]
                 []
             ]
@@ -159,7 +169,5 @@ view model =
 
 decode_cutout : JD.Decoder String
 decode_cutout =
-    JD.at [ "detail", "clips" ] (JD.list JD.string)
-    |> JD.map (List.head)
-    |> JD.andThen (Maybe.map (JD.succeed) >> Maybe.withDefault (JD.fail "no clip"))
+    JD.at [ "detail", "svg_content" ] JD.string
     

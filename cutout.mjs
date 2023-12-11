@@ -32,6 +32,10 @@ class CutoutElement extends HTMLElement {
         finish_button.textContent = 'Finish';
         main.append(finish_button);
 
+        finish_button.addEventListener('click', () => {
+            this.finish();
+        })
+
         const link = document.createElement('link');
         link.setAttribute('rel','stylesheet');
         link.setAttribute('href','cutout_style.css');
@@ -49,10 +53,6 @@ class CutoutElement extends HTMLElement {
         this.fontSize = 15;
         this.fontFamily = 'serif';
         this.text = 'Ho ho ho!';
-
-        finish_button.addEventListener('click', () => {
-            this.finish();
-        })
     }
 
     connectedCallback() {
@@ -251,6 +251,14 @@ class CutoutElement extends HTMLElement {
         offscreen_ctx.stroke();
 
         this.update_preview();
+    }
+
+    finish() {
+        const svg_content = `<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" viewBox="${this.svg.getAttribute('viewBox')}">${this.svg.innerHTML}</svg>`;
+        console.log(svg_content);
+        const blob = new Blob([svg_content], {type: 'text/svg+xml'});
+        const url = URL.createObjectURL(blob);
+        this.dispatchEvent(new CustomEvent('cut-out', {detail: {url, svg_content}}));
     }
 }
 
