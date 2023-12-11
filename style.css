@@ -1,0 +1,34 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+cut-out {
+  width: 100%;
+  height: 100%;
+  display: block;
+  grid-area: cutout;
+}
+
+main {
+  display: grid;
+  grid-template: 
+    "controls cutout" auto
+    "text cutout" 1fr
+    / 20em 1fr;
+  height: 100vh;
+}
+
+textarea, input, label, select {
+    display: block;
+}
+
+textarea {
+    grid-area: text;
+    width: 100%;
+    height: 100%;
+    resize: none;
+}

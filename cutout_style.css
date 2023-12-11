@@ -1,0 +1,11 @@
+main {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template:
+    "canvas svg" 1fr "button button" auto / 1fr 1fr;
+}
+
+button {
+  grid-area: button;
+}
