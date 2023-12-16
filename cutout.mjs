@@ -31,6 +31,7 @@ class CutoutElement extends HTMLElement {
         finish_button.type = 'button';
         finish_button.textContent = 'Finish';
         main.append(finish_button);
+        finish_button.addEventListener('click', () => this.finish());
 
         finish_button.addEventListener('click', () => {
             this.finish();
@@ -42,6 +43,7 @@ class CutoutElement extends HTMLElement {
         shadowRoot.appendChild(link);
 
         const svg = this.svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+        svg.setAttribute('xmlns','http://www.w3.org/2000/svg');
         main.appendChild(svg);
 
         const offscreen = this.offscreen = new OffscreenCanvas(canvas.width, canvas.height);
@@ -65,7 +67,7 @@ class CutoutElement extends HTMLElement {
         img.src = source;
         document.body.append(img);
 
-        img.addEventListener('load', () => {
+        img.decode().then(() => {
 
             const {canvas} = this;
 
@@ -116,16 +118,14 @@ class CutoutElement extends HTMLElement {
 
     attributeChangedCallback(name, oldValue, newValue) {
         const method_name = `change_${name}`;
-        console.log('change',name, newValue);
         if(this[method_name]) {
             this[method_name](newValue);
         }
         this.preview_frame();
     }
 
-    change_source() {
+    change_source(value) {
         this.init();
-    
     }
 
     change_linewidth(value) {
@@ -153,7 +153,7 @@ class CutoutElement extends HTMLElement {
         //offscreen_ctx.drawImage(this.source, (canvas.width-w)/2, 0, w,h );
         screen_ctx.drawImage(this.source, (canvas.width-w)/2, (canvas.height-h)/2, w,h );
         screen_ctx.globalAlpha = 0.1;
-        //screen_ctx.drawImage(offscreen,0,0);
+        screen_ctx.drawImage(offscreen,0,0);
         screen_ctx.globalAlpha = 1;
 
         //screen_ctx.strokeRect(minx,miny,maxx-minx,maxy-miny);
@@ -163,8 +163,9 @@ class CutoutElement extends HTMLElement {
         const text_bits = [];
 
         const imgd = offscreen_ctx.getImageData(0, 0, width, height).data;
-        let x=0;
-        let y=0;
+        const margin = 5;
+        let x = margin;
+        let y = margin;
         let i = 0;
         const font_family = this.fontFamily;
         screen_ctx.font = `${fontSize}px "${font_family}"`;
@@ -174,15 +175,15 @@ class CutoutElement extends HTMLElement {
             function can_draw_at(x,y) {
                 const c = Math.floor((y+m.actualBoundingBoxAscent) * width + x)*4;
                 const a = imgd[c+3];
-                return x<width && (a == 0 || a===undefined || y>height);
+                return x<width-margin && (a == 0 || a===undefined || y>height+margin);
             }
             // find starting point with one character
             while(true) {
                 if(can_draw_at(x,y) && can_draw_at(x+m.width,y)) {
                     break;
                 }
-                if(x + m.width > canvas.width) {
-                    x = 0;
+                if(x + m.width > canvas.width-margin) {
+                    x = margin;
                     y += fontSize;
                 } else {
                     x += m.width;
@@ -190,7 +191,7 @@ class CutoutElement extends HTMLElement {
             }
             // add characters until occluded or end of line
             let s = 0;
-            while(true) {
+            while(y<height-margin) {
                 s += 1;
                 if(s==1000) {
                     throw(new Error("ARG"));
@@ -236,6 +237,10 @@ class CutoutElement extends HTMLElement {
         }
     }
 
+    finish() {
+        this.dispatchEvent(new CustomEvent('cutout', {detail: this.svg.outerHTML}));
+    }
+
     draw(x, y, buttons) {
         const {opos, offscreen_ctx, lineWidth} = this;
         this.minx = Math.min(this.minx, opos.x-lineWidth/2, x-lineWidth/2);
@@ -251,14 +256,6 @@ class CutoutElement extends HTMLElement {
         offscreen_ctx.stroke();
 
         this.update_preview();
-    }
-
-    finish() {
-        const svg_content = `<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" viewBox="${this.svg.getAttribute('viewBox')}">${this.svg.innerHTML}</svg>`;
-        console.log(svg_content);
-        const blob = new Blob([svg_content], {type: 'text/svg+xml'});
-        const url = URL.createObjectURL(blob);
-        this.dispatchEvent(new CustomEvent('cut-out', {detail: {url, svg_content}}));
     }
 }
 

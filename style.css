@@ -14,7 +14,9 @@ cut-out {
 }
 
 main {
+  padding: 0.1em;
   display: grid;
+  gap: 1em;
   grid-template: 
     "controls cutout" auto
     "text cutout" 1fr
@@ -24,6 +26,7 @@ main {
 
 textarea, input, label, select {
     display: block;
+    width: 100%;
 }
 
 textarea {
@@ -31,4 +34,9 @@ textarea {
     width: 100%;
     height: 100%;
     resize: none;
+}
+#font-loaders {
+    position: absolute;
+    left: -10000px;
+    font-size: 0.0001px;
 }

@@ -1,4 +1,4 @@
-module ClippyOuty exposing (..)
+port module ClippyOuty exposing (..)
 
 import Browser
 import File.Download
@@ -7,21 +7,26 @@ import Html.Attributes as HA
 import Html.Events as HE
 import Json.Decode as JD
 import Regex
+import Tuple
+
+port imageReceiver : (String -> msg) -> Sub msg
+
+default_image = "christmas-tree.gif"
 
 font_options = 
     [
-        ("Atkinson Hyperlegible", "Atkinson Hyperlegible"),
-        ("Baskervville", "Baskervville"),
-        ("Berkshire Swash", "Berkshire Swash"),
-        ("Calistoga", "Calistoga"),
-        ("Cherry Swash", "Cherry Swash"),
-        ("Itim", "Itim"),
-        ("Kalam", "Kalam"),
-        ("Kalnia", "Kalnia"),
-        ("Marcellus", "Marcellus"),
-        ("Patua One", "Patua One"),
-        ("Pridi", "Pridi"),
-        ("Quintessential", "Quintessential")
+        "Atkinson Hyperlegible",
+        "Baskervville",
+        "Berkshire Swash",
+        "Calistoga",
+        "Cherry Swash",
+        "Itim",
+        "Kalam",
+        "Kalnia",
+        "Marcellus",
+        "Patua One",
+        "Pridi",
+        "Quintessential"
     ]
 
 main = Browser.document
@@ -32,7 +37,7 @@ main = Browser.document
     }
 
 type alias Model =
-    { source : String
+    { image_url : String
     , line_width : Float
     , font_size : Float
     , font_family : String
@@ -40,19 +45,21 @@ type alias Model =
     }
 
 type Msg
-    = DownloadImage String
-    | Noop
+    = Noop
+    | SetImage String
     | SetLineWidth Float
     | SetFont String
     | SetFontSize Float
     | SetText String
+    | WheelMovement Float
+    | ReceiveCutout String
 
 init_model : Model
 init_model = 
-    { source = "Christmas Victorian Lady.jpg"
+    { image_url = default_image
     , line_width = 60
     , font_size = 15
-    , font_family = "serif"
+    , font_family = font_options |> List.head |> Maybe.withDefault "serif"
     , text = "Ho ho ho!"
     }
 
@@ -78,14 +85,19 @@ change_suffix suffix =
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model = case msg of
-    DownloadImage content -> (model, File.Download.string (change_suffix "svg" model.source) "image/svg+xml" content)
     Noop -> model |> nocmd
     SetLineWidth w -> { model | line_width = w } |> nocmd
     SetFont font -> { model | font_family = font } |> nocmd
     SetFontSize s -> { model | font_size = s } |> nocmd
-    SetText text -> { model | text = clean_text text } |> nocmd
+    SetText text -> { model | text = text } |> nocmd
+    SetImage url -> { model | image_url = url } |> nocmd
+    WheelMovement d -> { model | line_width = clamp 1 100 (model.line_width - d/25) |> round |> toFloat } |> nocmd
+    ReceiveCutout cutout -> (model, File.Download.string "cutout.svg" "image/svg+xml" (cutout_svg cutout))
 
-subscriptions model = Sub.none
+cutout_svg cutout = """<?xml version=\"1.0\" encoding="UTF-8" standalone="no"?>\n""" ++ cutout
+
+subscriptions model =
+    imageReceiver SetImage
 
 label for text = 
     Html.label
@@ -106,7 +118,10 @@ view : Model -> Browser.Document Msg
 view model = 
     { title = "Clippy outy"
     , body = 
-        [ Html.main_ 
+        [ Html.div
+            [ HA.id "font-loaders" ]
+            (List.map (\font -> Html.p [ HA.style "font-family" font ] [ Html.text "hello" ]) font_options)
+        , Html.main_ 
             []
             [ Html.section
                 [ HA.id "controls" ]
@@ -130,7 +145,8 @@ view model =
                 , Html.select
                     [ HE.onInput SetFont
                     ]
-                    (view_options font_options)
+                    (view_options (List.map (\x -> (x,x)) font_options))
+
 
                 , label "font-size" "Font size"
                 , Html.input
@@ -147,6 +163,7 @@ view model =
                     [ HA.for "font-size" ]
                     [ Html.text <| String.fromFloat model.font_size ]
                 , datalist "font-sizes" [("15","")]
+
                 ]
             , Html.textarea
                 [ HA.id "text"
@@ -155,12 +172,13 @@ view model =
                 ]
                 []
             , Html.node "cut-out" 
-                [ HA.attribute "source" model.source
+                [ HA.attribute "source" model.image_url
                 , HA.attribute "linewidth" <| String.fromFloat model.line_width
                 , HA.attribute "fontsize" <| String.fromFloat model.font_size
                 , HA.attribute "fontfamily" model.font_family
-                , HA.attribute "text" model.text
-                , HE.on "cut-out" (decode_cutout |> JD.map DownloadImage)
+                , HA.attribute "text" (clean_text model.text)
+                , HE.preventDefaultOn "wheel" (JD.map (\d -> (WheelMovement d,True)) decode_wheel)
+                , HE.on "cutout" (JD.map ReceiveCutout decode_cutout)
                 ]
                 []
             ]
@@ -168,6 +186,7 @@ view model =
     }
 
 decode_cutout : JD.Decoder String
-decode_cutout =
-    JD.at [ "detail", "svg_content" ] JD.string
+decode_cutout = JD.field "detail" JD.string
     
+decode_wheel : JD.Decoder Float
+decode_wheel = JD.field "deltaY" JD.float
