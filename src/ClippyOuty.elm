@@ -171,6 +171,11 @@ view model =
                 , HA.value model.text
                 ]
                 []
+            , Html.section
+                [HA.id "help" ]
+                [ Html.p [] [Html.text "Drag an image file onto this page. Write text in the box. Then draw a mask by dragging with the mouse or pointer."] 
+                , Html.p [] [Html.a [ HA.href "https://somethingorotherwhatever.com" ] [ Html.text "Made by clp" ] ]
+                ]
             , Html.node "cut-out" 
                 [ HA.attribute "source" model.image_url
                 , HA.attribute "linewidth" <| String.fromFloat model.line_width

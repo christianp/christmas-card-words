@@ -20,6 +20,7 @@ main {
   grid-template: 
     "controls cutout" auto
     "text cutout" 1fr
+    "help cutout" auto
     / 20em 1fr;
   height: 100vh;
 }

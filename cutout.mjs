@@ -29,7 +29,7 @@ class CutoutElement extends HTMLElement {
 
         const finish_button = document.createElement('button');
         finish_button.type = 'button';
-        finish_button.textContent = 'Finish';
+        finish_button.textContent = 'Download SVG';
         main.append(finish_button);
         finish_button.addEventListener('click', () => this.finish());
 
